@@ -1,0 +1,10 @@
+{
+  "name": "codex-wasm",
+  "private": true,
+  "type": "module",
+  "description": "Codex (codex-rs) on wasm32-wasip1 in a browser tab: build, host, tests",
+  "dependencies": {
+    "just-bash": "3.6.0",
+    "memfs": "^4"
+  }
+}
