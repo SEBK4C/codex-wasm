@@ -1,0 +1,32 @@
+From 94fdda17021c1134282e0a36ac1a1366112a0582 Mon Sep 17 00:00:00 2001
+From: k4c <sebk4c@tuta.com>
+Date: Sun, 18 Oct 2026 20:32:32 +0000
+Subject: [PATCH 3/3] codex-wasm: wasm-small profile (fat LTO, opt-level z) for
+ the shipped module
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ codex-rs/Cargo.toml | 7 +++++++
+ 1 file changed, 7 insertions(+)
+
+diff --git a/codex-rs/Cargo.toml b/codex-rs/Cargo.toml
+index f37a8a5..94591dc 100644
+--- a/codex-rs/Cargo.toml
++++ b/codex-rs/Cargo.toml
+@@ -652,6 +652,13 @@ lto = false
+ codegen-units = 16
+ panic = "abort"
+ 
++# codex-wasm: the shipped module, as small as it gets.
++[profile.wasm-small]
++inherits = "wasm"
++opt-level = "z"
++lto = "fat"
++codegen-units = 1
++
+ [profile.profiling]
+ inherits = "release"
+ debug = "full"
+-- 
+2.43.0
+

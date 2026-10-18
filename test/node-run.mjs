@@ -13,11 +13,18 @@ import { bashAdapter } from "./bash-fs.mjs";
 const wasmPath = process.argv[2] ?? "codex_wasm.wasm";
 const mock = await startMock();
 const HOME = "/home/user", PROJECT = `${HOME}/project`;
+// MODEL=<slug>: one of the models Codex ships, from its catalog (code_mode_only relaxed to
+// code_mode, as the tab does: no code-mode host here).
+const MODEL = process.env.MODEL ?? "mock-model";
+const catalog = JSON.parse(fs.readFileSync(new URL("../codex/codex-rs/models-manager/models.json", import.meta.url).pathname.replace("/js/codex/", "/js/codex/"), "utf8"));
+for (const m of catalog.models) if (m.tool_mode === "code_mode_only") m.tool_mode = "code_mode";
 const vol = Volume.fromJSON({
+  [`${HOME}/.codex/models.json`]: JSON.stringify(catalog),
   [`${PROJECT}/notes.txt`]: "a note in the project\n",
   "/tmp/.keep": "",
-  [`${HOME}/.codex/config.toml`]: `model = "mock-model"
+  [`${HOME}/.codex/config.toml`]: `model = "${MODEL}"
 model_provider = "mock"
+model_catalog_json = "${HOME}/.codex/models.json"
 
 [model_providers.mock]
 name = "mock"
