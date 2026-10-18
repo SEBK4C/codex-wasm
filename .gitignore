@@ -3,3 +3,4 @@ codex/
 *.log
 out/
 node_modules/
+.codex-head

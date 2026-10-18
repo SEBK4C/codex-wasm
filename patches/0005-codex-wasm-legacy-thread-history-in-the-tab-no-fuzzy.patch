@@ -1,0 +1,89 @@
+From e677e48e5690bf9d6447dd48ab1cd722fb3e8a9a Mon Sep 17 00:00:00 2001
+From: k4c <sebk4c@tuta.com>
+Date: Sun, 18 Oct 2026 20:46:08 +0000
+Subject: [PATCH 5/5] codex-wasm: legacy thread history in the tab; no fuzzy
+ file search on WASI
+
+Paginated history needs the SQLite state DB (sqlx connections run on threads), so the tab's
+threads record full history and resume from their rollout. Rollout lookup by id uses the
+filename scan only; file_search::run fails instead of panicking (nucleo needs threads).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ codex-rs/file-search/src/lib.rs |  5 +++++
+ codex-rs/rollout/src/list.rs    |  7 +++++++
+ codex-rs/wasm/src/lib.rs        | 12 ++++++++++--
+ 3 files changed, 22 insertions(+), 2 deletions(-)
+
+diff --git a/codex-rs/file-search/src/lib.rs b/codex-rs/file-search/src/lib.rs
+index c189646..ae5ba46 100644
+--- a/codex-rs/file-search/src/lib.rs
++++ b/codex-rs/file-search/src/lib.rs
+@@ -180,6 +180,11 @@ pub fn create_session(
+         respect_gitignore,
+     } = options;
+ 
++    // codex-wasm: nucleo and the directory walker run on threads, which a browser tab's module
++    // does not have.
++    if cfg!(target_os = "wasi") {
++        anyhow::bail!("file search is not available in the browser tab (it needs threads)");
++    }
+     let Some(primary_search_directory) = search_directories.first() else {
+         anyhow::bail!("at least one search directory is required");
+     };
+diff --git a/codex-rs/rollout/src/list.rs b/codex-rs/rollout/src/list.rs
+index bdead9e..55373ab 100644
+--- a/codex-rs/rollout/src/list.rs
++++ b/codex-rs/rollout/src/list.rs
+@@ -1351,6 +1351,13 @@ async fn find_thread_path_by_id_str_in_subdir(
+ 
+     let found = match filename_match {
+         Some(path) => Some(path),
++        // codex-wasm: the fuzzy search needs threads; the filename scan above is the lookup.
++        None if cfg!(target_os = "wasi") => {
++            if let Some(err) = filename_scan_error {
++                return Err(err);
++            }
++            None
++        }
+         None => {
+             // This is safe because we know the values are valid.
+             #[allow(clippy::unwrap_used)]
+diff --git a/codex-rs/wasm/src/lib.rs b/codex-rs/wasm/src/lib.rs
+index 6093279..a17020c 100644
+--- a/codex-rs/wasm/src/lib.rs
++++ b/codex-rs/wasm/src/lib.rs
+@@ -169,6 +169,14 @@ async fn next_message() -> Vec<u8> {
+     .await
+ }
+ 
++/// Threads record their whole history in the rollout ("legacy" history). Paginated history keeps
++/// its metadata in the SQLite state DB, which the tab cannot open (sqlx runs every connection on
++/// a thread), and a paginated thread could not be resumed from its rollout.
++fn legacy(mut options: StartThreadOptions) -> StartThreadOptions {
++    options.history_mode = Some(codex_protocol::protocol::ThreadHistoryMode::Legacy);
++    options
++}
++
+ async fn run() -> anyhow::Result<()> {
+     if let Ok(pwd) = std::env::var("PWD") {
+         std::env::set_current_dir(&pwd).with_context(|| format!("cd {pwd}"))?;
+@@ -255,13 +263,13 @@ async fn run() -> anyhow::Result<()> {
+             Err(error) => {
+                 emit(json!({"type": "notice", "message": format!("could not resume {path}: {error}; starting a new thread")}));
+                 thread_manager
+-                    .start_thread(StartThreadOptions::new(config))
++                    .start_thread(legacy(StartThreadOptions::new(config)))
+                     .await
+                     .context("start Codex thread")?
+             }
+         },
+         None => thread_manager
+-            .start_thread(StartThreadOptions::new(config))
++            .start_thread(legacy(StartThreadOptions::new(config)))
+             .await
+             .context("start Codex thread")?,
+     };
+-- 
+2.43.0
+

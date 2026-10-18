@@ -1,0 +1,94 @@
+From 487bbc7d5ed06b69fb6aeb63de4ba7da850f8322 Mon Sep 17 00:00:00 2001
+From: k4c <sebk4c@tuta.com>
+Date: Sun, 18 Oct 2026 20:37:35 +0000
+Subject: [PATCH 4/5] codex-wasm: resume the tab's thread from its rollout
+ (CODEX_RESUME_ROLLOUT)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ codex-rs/wasm/src/lib.rs | 46 +++++++++++++++++++++++++++++++++-------
+ 1 file changed, 38 insertions(+), 8 deletions(-)
+
+diff --git a/codex-rs/wasm/src/lib.rs b/codex-rs/wasm/src/lib.rs
+index e1c0984..6093279 100644
+--- a/codex-rs/wasm/src/lib.rs
++++ b/codex-rs/wasm/src/lib.rs
+@@ -10,7 +10,8 @@
+ //! The page talks to Codex through messages (JSON, one per `take_message`):
+ //! `{"type":"user","text":…,"model"?:…,"effort"?:…}` starts a turn, or steers the running one;
+ //! `{"type":"interrupt"}` stops the turn; `{"type":"shutdown"}` ends the thread.
+-//! Codex answers with `{"type":"ready","thread_id"}`, `{"type":"event","event":<Event>}` for
++//! With `CODEX_RESUME_ROLLOUT=<path>` in the environment, the thread recorded there is resumed.
++//! Codex answers with `{"type":"ready","thread_id","resumed"}`, `{"type":"notice","message"}`, `{"type":"event","event":<Event>}` for
+ //! every protocol event, `{"type":"error","message"}` and `{"type":"exit"}`.
+ 
+ use std::cell::RefCell;
+@@ -191,7 +192,7 @@ async fn run() -> anyhow::Result<()> {
+         .context("load config")?;
+ 
+     let state_db = init_state_db(&config).await;
+-    let auth_manager = AuthManager::shared_from_config(&config, /*enable_codex_api_key_env*/ false)
++    let auth_manager: Arc<AuthManager> = AuthManager::shared_from_config(&config, /*enable_codex_api_key_env*/ false)
+         .await
+         .context("auth")?;
+     let local_runtime_paths = ExecServerRuntimeOptions::from_optional_paths(
+@@ -217,7 +218,7 @@ async fn run() -> anyhow::Result<()> {
+     let thread_manager = ThreadManager::new(
+         &config,
+         Arc::clone(&auth_manager),
+-        build_models_manager(&config, auth_manager),
++        build_models_manager(&config, Arc::clone(&auth_manager)),
+         CodexAppsToolsCache::default(),
+         SessionSource::Exec,
+         environment_manager,
+@@ -232,13 +233,42 @@ async fn run() -> anyhow::Result<()> {
+         /*external_time_provider*/ None,
+     );
+ 
++    // A chat the tab reopened: resume its thread from the rollout Codex wrote (CODEX_RESUME_ROLLOUT),
++    // else, or when that fails, a new thread.
++    let resume = std::env::var("CODEX_RESUME_ROLLOUT").ok().filter(|p| !p.is_empty());
++    let mut resumed = false;
++    let started = match resume {
++        Some(path) => match thread_manager
++            .resume_legacy_thread_from_rollout(
++                config.clone(),
++                std::path::PathBuf::from(&path),
++                Arc::clone(&auth_manager),
++                /*parent_trace*/ None,
++                codex_protocol::mcp::ClientMcpExtensions::default(),
++            )
++            .await
++        {
++            Ok(thread) => {
++                resumed = true;
++                thread
++            }
++            Err(error) => {
++                emit(json!({"type": "notice", "message": format!("could not resume {path}: {error}; starting a new thread")}));
++                thread_manager
++                    .start_thread(StartThreadOptions::new(config))
++                    .await
++                    .context("start Codex thread")?
++            }
++        },
++        None => thread_manager
++            .start_thread(StartThreadOptions::new(config))
++            .await
++            .context("start Codex thread")?,
++    };
+     let NewThread {
+         thread_id, thread, ..
+-    } = thread_manager
+-        .start_thread(StartThreadOptions::new(config))
+-        .await
+-        .context("start Codex thread")?;
+-    emit(json!({"type": "ready", "thread_id": thread_id.to_string()}));
++    } = started;
++    emit(json!({"type": "ready", "thread_id": thread_id.to_string(), "resumed": resumed}));
+ 
+     let events = {
+         let thread = Arc::clone(&thread);
+-- 
+2.43.0
+

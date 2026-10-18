@@ -4,4 +4,5 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 rsync -a --delete --exclude .git --exclude target codex/ waffle:/root/codex-wasm/codex/
 rsync -a --delete crates/ waffle:/root/codex-wasm/crates/
+git -C codex rev-parse --short HEAD > build/.codex-head
 rsync -a build/ waffle:/root/codex-wasm/build/
