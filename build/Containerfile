@@ -1,0 +1,18 @@
+# Build image for Codex (codex-rs) on wasm32-wasip1: Rust at codex's pinned toolchain with
+# rust-src patched for the browser tab (std-patch.py), wasi-sdk (clang + sysroot for C deps),
+# binaryen.
+FROM docker.io/library/rust:1.95-bookworm
+ARG WASI_SDK=27
+RUN apt-get update -qq && apt-get install -y -qq python3 >/dev/null && rm -rf /var/lib/apt/lists/* \
+ && rustup component add rust-src clippy rustfmt && rustup target add wasm32-wasip1 \
+ && curl -fsSL https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-${WASI_SDK}/wasi-sdk-${WASI_SDK}.0-x86_64-linux.tar.gz \
+    | tar -xz -C /opt && ln -s /opt/wasi-sdk-${WASI_SDK}.0-x86_64-linux /opt/wasi-sdk \
+ && curl -fsSL https://github.com/WebAssembly/binaryen/releases/download/version_124/binaryen-version_124-x86_64-linux.tar.gz \
+    | tar -xz -C /opt && ln -s /opt/binaryen-version_124/bin/wasm-opt /usr/local/bin/wasm-opt
+COPY std-patch.py /opt/std-patch.py
+RUN python3 /opt/std-patch.py
+ENV WASI_SDK_PATH=/opt/wasi-sdk \
+    CC_wasm32_wasip1=/opt/wasi-sdk/bin/clang \
+    AR_wasm32_wasip1=/opt/wasi-sdk/bin/llvm-ar \
+    CFLAGS_wasm32_wasip1="--sysroot=/opt/wasi-sdk/share/wasi-sysroot -D_WASI_EMULATED_SIGNAL -D_WASI_EMULATED_PROCESS_CLOCKS -D_WASI_EMULATED_MMAN -D_WASI_EMULATED_GETPID" \
+    RUSTC_BOOTSTRAP=1

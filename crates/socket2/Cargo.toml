@@ -1,0 +1,9 @@
+[package]
+name = "socket2"
+version = "0.6.3"
+edition = "2021"
+description = "codex-wasm: socket2's API on wasm32-wasip1, where a browser tab has no sockets. Every call fails with Unsupported."
+license = "MIT OR Apache-2.0"
+
+[features]
+all = []

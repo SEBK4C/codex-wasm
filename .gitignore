@@ -1,0 +1,5 @@
+codex/
+/cache/
+*.log
+out/
+node_modules/
