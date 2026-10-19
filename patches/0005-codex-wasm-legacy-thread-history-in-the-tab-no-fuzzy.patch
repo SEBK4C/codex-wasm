@@ -1,7 +1,7 @@
 From e677e48e5690bf9d6447dd48ab1cd722fb3e8a9a Mon Sep 17 00:00:00 2001
 From: k4c <sebk4c@tuta.com>
 Date: Sun, 18 Oct 2026 20:46:08 +0000
-Subject: [PATCH 5/5] codex-wasm: legacy thread history in the tab; no fuzzy
+Subject: [PATCH 5/6] codex-wasm: legacy thread history in the tab; no fuzzy
  file search on WASI
 
 Paginated history needs the SQLite state DB (sqlx connections run on threads), so the tab's

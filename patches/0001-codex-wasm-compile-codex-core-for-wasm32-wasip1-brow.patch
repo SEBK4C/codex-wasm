@@ -1,7 +1,7 @@
 From 05c4886a6aa2f1b69067de1a7ca05e16a93750f8 Mon Sep 17 00:00:00 2001
 From: k4c <sebk4c@tuta.com>
 Date: Sun, 18 Oct 2026 19:29:09 +0000
-Subject: [PATCH 1/5] codex-wasm: compile codex-core for wasm32-wasip1 (browser
+Subject: [PATCH 1/6] codex-wasm: compile codex-core for wasm32-wasip1 (browser
  tab)
 
 cfg gates where WASI takes the Unix path or a tab-specific one: path conventions,

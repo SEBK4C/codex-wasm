@@ -21,6 +21,7 @@ for (const m of catalog.models) if (m.tool_mode === "code_mode_only") m.tool_mod
 const vol = Volume.fromJSON({
   [`${HOME}/.codex/models.json`]: JSON.stringify(catalog),
   [`${PROJECT}/notes.txt`]: "a note in the project\n",
+  [process.env.SKILL_DIR ? `${process.env.SKILL_DIR}/deploy/SKILL.md` : `${HOME}/.agents/skills/deploy/SKILL.md`]: "---\nname: deploy\ndescription: DEPLOY-SKILL for tests\n---\nSteps.\n",
   "/tmp/.keep": "",
   [`${HOME}/.codex/config.toml`]: `model = "${MODEL}"
 model_provider = "mock"
@@ -67,7 +68,7 @@ const host = await startCodex(fs.readFileSync(wasmPath), {
       if (msg.type === "error") console.log(JSON.stringify(msg));
     } else {
       console.log(`[${m.type}]`, JSON.stringify(m).slice(0, 400));
-      if (m.type === "ready") host.send({ type: "user", text: "Run a command and tell me what it printed." });
+      if (m.type === "ready") host.send({ type: "user", text: process.env.PROMPT ?? "Run a command and tell me what it printed." });
       if (m.type === "crash" || m.type === "exit" || m.type === "panic") done(m.type);
     }
   },
@@ -80,5 +81,8 @@ host.stop();
 mock.close();
 const final = events.filter((e) => e.type === "agent_message").map((e) => e.message).join("\n");
 console.log(`\n=== ${how}; ${mock.requests.length} model requests; final message: ${final || "(none)"}`);
+console.log(`user said: ${JSON.stringify(mock.requests[0]?.body?.input?.filter((i) => i.role === "user").map((i) => i.content?.[0]?.text?.slice(0, 80)))}`);
+if (process.env.DUMP) console.log("DUMP", JSON.stringify(mock.requests[0]?.body?.input?.filter((i) => i.type === "message").map((i) => (i.content ?? []).map((c) => c.text ?? "").join(" ").slice(0, 1500))));
+console.log(`skill listed to the model: ${mock.requests.some((r) => JSON.stringify(r.body).includes("DEPLOY-SKILL"))}`);
 console.log(`tools offered: ${(mock.requests.find((r) => r.body?.tools)?.body.tools ?? []).map((t) => t.name ?? t.type).join(", ")}`);
 process.exit(how === "complete" && /hello from project/.test(final) ? 0 : 1);

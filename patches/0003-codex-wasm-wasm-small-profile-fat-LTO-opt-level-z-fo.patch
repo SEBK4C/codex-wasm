@@ -1,7 +1,7 @@
 From 94fdda17021c1134282e0a36ac1a1366112a0582 Mon Sep 17 00:00:00 2001
 From: k4c <sebk4c@tuta.com>
 Date: Sun, 18 Oct 2026 20:32:32 +0000
-Subject: [PATCH 3/5] codex-wasm: wasm-small profile (fat LTO, opt-level z) for
+Subject: [PATCH 3/6] codex-wasm: wasm-small profile (fat LTO, opt-level z) for
  the shipped module
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

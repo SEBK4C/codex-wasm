@@ -1,7 +1,7 @@
 From edc7d18cf56b47eb85ea74fa57d4cd7755c22788 Mon Sep 17 00:00:00 2001
 From: k4c <sebk4c@tuta.com>
 Date: Sun, 18 Oct 2026 20:09:09 +0000
-Subject: [PATCH 2/5] codex-wasm: the wasm entry crate (codex-wasm) and runtime
+Subject: [PATCH 2/6] codex-wasm: the wasm entry crate (codex-wasm) and runtime
  fixes
 
 wasm/: a cdylib reactor that the tab drives (codex_start, codex_tick, codex_host_wake),
